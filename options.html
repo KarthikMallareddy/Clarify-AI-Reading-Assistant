@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Clarify Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-desc {
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .setting-group {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .setting-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting-label {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .setting-sublabel {
+      font-size: 13px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      background: #ccc;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .toggle.active {
+      background: #4CAF50;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    .toggle.active .toggle-slider {
+      transform: translateX(24px);
+    }
+
+    .btn {
+      padding: 12px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-danger {
+      background: #F44336;
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-size: 13px;
+    }
+
+    .api-key-hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      padding: 8px;
+      background: #fff3cd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Clarify Settings</h1>
+      <p>Configure your AI reading assistant</p>
+    </div>
+
+    <div class="content">
+      <div id="alert" class="alert"></div>
+
+      <!-- API Configuration -->
+      <div class="section">
+        <div class="section-title">API Configuration</div>
+        <div class="section-desc">
+          Clarify uses OpenAI's GPT for summarization and policy analysis. 
+          Add your API key to unlock these features.
+        </div>
+        
+        <div class="setting-group">
+          <label for="openai-key" style="display: block; margin-bottom: 8px; font-weight: 500;">
+            OpenAI API Key
+          </label>
+          <input 
+            type="password" 
+            id="openai-key" 
+            placeholder="sk-..." 
+            autocomplete="off"
+          />
+          <div class="api-key-hint">
+            Get your API key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>
+            <br>Cost: ~$0.001 per summary, ~$0.05 per policy analysis
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Toggles -->
+      <div class="section">
+        <div class="section-title">Features</div>
+        
+        <div class="setting-group">
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Grammar Checking</div>
+              <div class="setting-sublabel">Check grammar as you type (uses LanguageTool)</div>
+            </div>
+            <div class="toggle active" id="grammar-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Article Detection</div>
+              <div class="setting-sublabel">Automatically detect articles for summarization</div>
+            </div>
+            <div class="toggle active" id="article-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Policy Warnings</div>
+              <div class="setting-sublabel">Show banner on privacy policy pages</div>
+            </div>
+            <div class="toggle active" id="policy-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Usage Statistics -->
+      <div class="section">
+        <div class="section-title">Usage Statistics</div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="grammar-stat">0</div>
+            <div class="stat-label">Grammar Checks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="summary-stat">0</div>
+            <div class="stat-label">Summaries</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="policy-stat">0</div>
+            <div class="stat-label">Policies Analyzed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="section">
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button class="btn" id="save-btn">Save Settings</button>
+          <button class="btn btn-secondary" id="reset-btn">Reset to Defaults</button>
+          <button class="btn btn-danger" id="clear-stats-btn">Clear Statistics</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Clarify v1.0.0 • Made for better reading
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
