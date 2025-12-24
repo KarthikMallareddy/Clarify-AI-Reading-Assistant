@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Clarify Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      color: #667eea;
+    }
+    
+    .test-section {
+      background: #f5f5f5;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 12px;
+      font-size: 14px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    
+    .article {
+      background: white;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Clarify Extension Test Page</h1>
+  
+  <div class="test-section">
+    <h2>Test 1: Grammar Checking <span class="badge">Type below</span></h2>
+    <p>Try typing these sentences with errors:</p>
+    <ul>
+      <li>"I was wondering if your available tommorow?"</li>
+      <li>"Their going to the store to buy some apples"</li>
+      <li>"Me and him is going to the park"</li>
+    </ul>
+    <textarea placeholder="Type here to test grammar checking..."></textarea>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: Article Summarization <span class="badge">Click Clarify icon</span></h2>
+    <article class="article">
+      <h3>The Future of Artificial Intelligence</h3>
+      
+      <p>Artificial intelligence has rapidly evolved from a theoretical concept to a practical tool that impacts nearly every aspect of modern life. From virtual assistants that help us manage our daily tasks to sophisticated algorithms that drive autonomous vehicles, AI has become an integral part of our technological landscape.</p>
+      
+      <p>The development of large language models represents a significant milestone in AI research. These models, trained on vast amounts of text data, can understand context, generate human-like responses, and perform complex reasoning tasks. Companies and researchers worldwide are exploring applications ranging from healthcare diagnostics to climate modeling.</p>
+      
+      <p>However, the rapid advancement of AI technology also raises important ethical questions. Issues of bias in AI systems, the potential for job displacement, and concerns about privacy and surveillance require careful consideration. Policymakers, technologists, and ethicists are working together to establish guidelines that ensure AI development benefits humanity while minimizing potential harms.</p>
+      
+      <p>Looking forward, experts predict that AI will continue to transform industries and create new opportunities. The key challenge will be managing this transformation responsibly, ensuring that the benefits of AI are distributed equitably and that safeguards are in place to prevent misuse. Education and public awareness will play crucial roles in preparing society for an AI-driven future.</p>
+      
+      <p>As we stand at this technological crossroads, the decisions we make today about AI development and deployment will shape the world for generations to come. By fostering open dialogue and collaborative approaches, we can work towards a future where artificial intelligence serves as a powerful tool for human progress and wellbeing.</p>
+    </article>
+    <p><strong>Instructions:</strong> Click the Clarify extension icon and choose "Smart Summarizer" to see this article condensed.</p>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 3: More Grammar Tests</h2>
+    <textarea placeholder="Try typing more sentences with errors...
+
+Examples:
+- 'I should of went to the store'
+- 'Between you and I, this is amazing'
+- 'The data is very interesting'"></textarea>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 4: Rich Text Input</h2>
+    <div contenteditable="true" style="border: 2px solid #ddd; padding: 12px; min-height: 100px; background: white; border-radius: 4px;">
+      <p>This is a contenteditable div. Try typing here too!</p>
+      <p>Type: "Your the best developer!" and see if grammar checking works.</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Results Checklist</h2>
+    <ul>
+      <li>✓ Extension icon appears in toolbar</li>
+      <li>✓ Popup opens when clicking icon</li>
+      <li>✓ Grammar errors show (after 500ms pause)</li>
+      <li>✓ Article detected (check popup status)</li>
+      <li>✓ Summary works (if API key configured)</li>
+      <li>✓ Settings page opens</li>
+      <li>✓ Toggles work</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Debugging</h2>
+    <p>Open Chrome DevTools (F12) to see console logs:</p>
+    <ul>
+      <li>"Clarify content script loaded" - Content script initialized</li>
+      <li>"Grammar checker initialized" - Grammar feature ready</li>
+      <li>"Article detected: X min read" - Article found</li>
+      <li>Grammar errors will be logged when detected</li>
+    </ul>
+  </div>
+</body>
+</html>
