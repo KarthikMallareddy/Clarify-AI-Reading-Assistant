@@ -1,0 +1,26 @@
+# Quick Icon Creator for Clarify Extension
+# Run this in PowerShell to create placeholder icons
+
+Write-Host "Creating placeholder icons..." -ForegroundColor Cyan
+
+$iconFolder = "icons"
+$sizes = @(16, 48, 128)
+
+# Create simple PNG files
+foreach ($size in $sizes) {
+    $iconPath = Join-Path $iconFolder "icon$size.png"
+    
+    # Create a minimal valid PNG (1x1 pixel)
+    $pngBytes = [byte[]](0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x62, 0x66, 0x7E, 0xEA, 0x00, 0x00, 0x02, 0x02, 0x01, 0x01, 0x6E, 0x68, 0x7F, 0xFC, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82)
+    
+    [System.IO.File]::WriteAllBytes($iconPath, $pngBytes)
+    Write-Host "Created $iconPath" -ForegroundColor Green
+}
+
+Write-Host "`n✓ All icons created!" -ForegroundColor Green
+Write-Host "`nNext steps:" -ForegroundColor Yellow
+Write-Host "1. Go to chrome://extensions/" -ForegroundColor White
+Write-Host "2. Enable Developer mode" -ForegroundColor White
+Write-Host "3. Click Load unpacked" -ForegroundColor White
+Write-Host "4. Select the Clarify folder" -ForegroundColor White
+Write-Host "5. Open test-page.html to test!" -ForegroundColor White
