@@ -91,18 +91,34 @@ class GrammarChecker {
 
     console.log('Checking grammar for:', text.substring(0, 50) + '...');
 
-    // Send to background for checking
-    chrome.runtime.sendMessage(
-      { action: 'checkGrammar', text },
-      (response) => {
-        if (response && response.errors) {
-          console.log(`Found ${response.errors.length} grammar errors:`, response.errors);
-          this.displayErrors(elem, response.errors);
-        } else if (response && response.error) {
-          console.log('Grammar check error:', response.error);
+    // Check if extension context is still valid
+    if (!chrome.runtime?.id) {
+      console.log('Extension context invalidated. Please refresh the page.');
+      return;
+    }
+
+    try {
+      // Send to background for checking
+      chrome.runtime.sendMessage(
+        { action: 'checkGrammar', text },
+        (response) => {
+          // Check for runtime errors (extension reloaded)
+          if (chrome.runtime.lastError) {
+            console.log('Extension was reloaded. Please refresh this page.');
+            return;
+          }
+
+          if (response && response.errors) {
+            console.log(`Found ${response.errors.length} grammar errors:`, response.errors);
+            this.displayErrors(elem, response.errors);
+          } else if (response && response.error) {
+            console.log('Grammar check error:', response.error);
+          }
         }
-      }
-    );
+      );
+    } catch (error) {
+      console.log('Extension context error. Please refresh the page.');
+    }
   }
 
   displayErrors(elem, errors) {
@@ -111,18 +127,156 @@ class GrammarChecker {
 
     if (errors.length === 0) return;
 
-    // Create error indicators
-    errors.forEach(error => {
-      // For now, just log - we'll add visual markers next
-      console.log(`Grammar error: ${error.message} at position ${error.offset}`);
-    });
+    console.log(`Found ${errors.length} grammar errors`);
+
+    // For simplicity, show errors as clickable chips below the input
+    this.createErrorChips(elem, errors);
 
     currentErrors = errors;
+  }
+
+  createErrorChips(elem, errors) {
+    // Create container for error chips
+    let container = elem.nextElementSibling;
+    if (!container || !container.classList.contains('clarify-errors-container')) {
+      container = document.createElement('div');
+      container.className = 'clarify-errors-container';
+      container.style.marginTop = '8px';
+      container.style.display = 'flex';
+      container.style.flexWrap = 'wrap';
+      container.style.gap = '8px';
+      elem.parentNode.insertBefore(container, elem.nextSibling);
+    }
+
+    container.innerHTML = '';
+
+    const text = elem.value || elem.innerText || elem.textContent;
+
+    errors.forEach((error, index) => {
+      const errorText = text.substring(error.offset, error.offset + error.length);
+      
+      const chip = document.createElement('div');
+      chip.className = 'clarify-error-chip';
+      chip.style.cssText = `
+        background: #ffebee;
+        border: 1px solid #ef5350;
+        border-radius: 16px;
+        padding: 6px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+      `;
+
+      chip.innerHTML = `
+        <span style="font-weight: 600; color: #c62828;">${this.escapeHtml(errorText)}</span>
+        <span style="color: #666;">→</span>
+        <span style="color: #1976d2; font-weight: 500;">${error.replacements[0] || 'Fix'}</span>
+      `;
+
+      chip.addEventListener('mouseenter', () => {
+        chip.style.background = '#ffcdd2';
+        chip.style.transform = 'scale(1.02)';
+      });
+
+      chip.addEventListener('mouseleave', () => {
+        chip.style.background = '#ffebee';
+        chip.style.transform = 'scale(1)';
+      });
+
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showTooltip(chip, error, elem);
+      });
+
+      container.appendChild(chip);
+      this.errorMarkers.push(chip);
+    });
+
+    this.errorMarkers.push(container);
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  showTooltip(target, error, inputElem) {
+    // Remove existing tooltip
+    document.querySelectorAll('.clarify-tooltip').forEach(t => t.remove());
+
+    // Create tooltip
+    const tooltip = document.createElement('div');
+    tooltip.className = 'clarify-tooltip';
+
+    const message = document.createElement('div');
+    message.className = 'clarify-tooltip-message';
+    message.textContent = error.message;
+    tooltip.appendChild(message);
+
+    if (error.replacements && error.replacements.length > 0) {
+      const suggestionsDiv = document.createElement('div');
+      suggestionsDiv.className = 'clarify-tooltip-suggestions';
+
+      error.replacements.forEach(suggestion => {
+        const suggestionBtn = document.createElement('div');
+        suggestionBtn.className = 'clarify-suggestion';
+        suggestionBtn.textContent = suggestion;
+        suggestionBtn.addEventListener('click', () => {
+          this.applyCorrection(inputElem, error.offset, error.length, suggestion);
+          tooltip.remove();
+        });
+        suggestionsDiv.appendChild(suggestionBtn);
+      });
+
+      tooltip.appendChild(suggestionsDiv);
+    }
+
+    // Position tooltip
+    const rect = target.getBoundingClientRect();
+    tooltip.style.position = 'fixed';
+    tooltip.style.left = rect.left + 'px';
+    tooltip.style.top = (rect.bottom + 5) + 'px';
+
+    document.body.appendChild(tooltip);
+
+    // Close on click outside
+    setTimeout(() => {
+      document.addEventListener('click', function closeTooltip(e) {
+        if (!tooltip.contains(e.target) && e.target !== target) {
+          tooltip.remove();
+          document.removeEventListener('click', closeTooltip);
+        }
+      });
+    }, 100);
+  }
+
+  applyCorrection(elem, offset, length, replacement) {
+    const text = elem.value || elem.innerText || elem.textContent;
+    const newText = text.substring(0, offset) + replacement + text.substring(offset + length);
+
+    if (elem.value !== undefined) {
+      elem.value = newText;
+    } else {
+      elem.textContent = newText;
+    }
+
+    // Trigger re-check
+    this.clearMarkers();
+    setTimeout(() => {
+      this.checkText(elem);
+    }, 100);
   }
 
   clearMarkers() {
     this.errorMarkers.forEach(marker => marker.remove());
     this.errorMarkers = [];
+    
+    // Remove any tooltips
+    document.querySelectorAll('.clarify-tooltip').forEach(t => t.remove());
   }
 }
 
