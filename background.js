@@ -28,7 +28,7 @@ chrome.storage.sync.get(['openaiKey', 'languageToolEnabled'], (result) => {
 
 /**
  * Grammar Check Handler
- * Calls LanguageTool API to find grammar errors
+ * Hybrid approach: LanguageTool first, then AI fallback
  */
 async function checkGrammar(text) {
   if (!CONFIG.languageTool.enabled) {
@@ -36,29 +36,150 @@ async function checkGrammar(text) {
   }
 
   try {
-    const response = await fetch(CONFIG.languageTool.url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: `text=${encodeURIComponent(text)}&language=en-US`
-    });
-
-    const data = await response.json();
+    // Step 1: Try LanguageTool first (free, fast)
+    const ltErrors = await checkWithLanguageTool(text);
     
-    return {
-      errors: data.matches.map(match => ({
-        message: match.message,
-        offset: match.offset,
-        length: match.length,
-        replacements: match.replacements.slice(0, 3).map(r => r.value),
-        rule: match.rule.id,
-        type: match.rule.category.id
-      }))
-    };
+    // Step 2: If LanguageTool found errors, return them
+    if (ltErrors.length > 0) {
+      console.log('LanguageTool found', ltErrors.length, 'errors');
+      return { errors: ltErrors, source: 'LanguageTool' };
+    }
+    
+    // Step 3: If no errors found and user has OpenAI key, use AI as fallback
+    if (CONFIG.openai.apiKey && text.length > 10) {
+      console.log('LanguageTool found 0 errors, trying AI fallback...');
+      const aiErrors = await checkWithAI(text);
+      if (aiErrors.length > 0) {
+        console.log('AI found', aiErrors.length, 'additional errors');
+        return { errors: aiErrors, source: 'AI' };
+      }
+    }
+    
+    // No errors found by either method
+    return { errors: [], source: 'LanguageTool' };
+    
   } catch (error) {
     console.error('Grammar check failed:', error);
     return { errors: [], error: error.message };
+  }
+}
+
+/**
+ * Check grammar using LanguageTool API
+ */
+async function checkWithLanguageTool(text) {
+  const params = new URLSearchParams({
+    text: text,
+    language: 'en-US',
+    enabledOnly: 'false',
+    level: 'picky',
+    enabledCategories: 'GRAMMAR,TYPOS,STYLE,REDUNDANCY,CONFUSED_WORDS'
+  });
+
+  const response = await fetch(CONFIG.languageTool.url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json'
+    },
+    body: params.toString()
+  });
+
+  if (!response.ok) {
+    throw new Error(`LanguageTool API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  return data.matches.map(match => ({
+    message: match.message,
+    shortMessage: match.shortMessage || match.message,
+    offset: match.offset,
+    length: match.length,
+    replacements: match.replacements.slice(0, 3).map(r => r.value),
+    rule: match.rule.id,
+    ruleDescription: match.rule.description,
+    type: match.rule.category.id,
+    category: match.rule.category.name
+  }));
+}
+
+/**
+ * Check grammar using OpenAI GPT (AI fallback)
+ */
+async function checkWithAI(text) {
+  if (!CONFIG.openai.apiKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CONFIG.openai.apiKey}`
+      },
+      body: JSON.stringify({
+        model: CONFIG.openai.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a grammar checker. Analyze the text and return ONLY a JSON array of errors. Each error must have: offset (character position), length (error length), message (explanation), replacements (array of suggestions). If no errors, return empty array [].'
+          },
+          {
+            role: 'user',
+            content: `Check this text for grammar errors:\n\n"${text}"`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    
+    // Parse JSON response
+    let errors = [];
+    try {
+      // Remove markdown code blocks if present
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        errors = JSON.parse(jsonMatch[0]);
+      } else {
+        errors = JSON.parse(content);
+      }
+    } catch (e) {
+      console.error('Failed to parse AI response:', e);
+      return [];
+    }
+    
+    // Validate and format errors
+    return errors.filter(err => 
+      err.offset !== undefined && 
+      err.length !== undefined &&
+      err.message &&
+      err.replacements
+    ).map(err => ({
+      message: err.message,
+      shortMessage: err.message,
+      offset: err.offset,
+      length: err.length,
+      replacements: Array.isArray(err.replacements) ? err.replacements : [err.replacements],
+      rule: 'AI_GRAMMAR',
+      ruleDescription: 'AI-detected grammar issue',
+      type: 'AI_GRAMMAR',
+      category: 'Grammar (AI)'
+    }));
+    
+  } catch (error) {
+    console.error('AI grammar check failed:', error);
+    return [];
   }
 }
 

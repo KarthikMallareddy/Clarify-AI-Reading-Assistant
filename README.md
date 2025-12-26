@@ -9,11 +9,15 @@ Clarify is a Chrome extension that makes reading and writing online faster and s
 ## Features
 
 ### 1. Grammar Guardian
-- **Real-time grammar checking** as you type
+- **Hybrid grammar checking** - LanguageTool + AI fallback
+- Catches errors that traditional checkers miss (like "their" vs "they're")
 - Works on Gmail, Twitter, LinkedIn, Reddit, and any text input
-- Powered by LanguageTool API (free tier available)
+- **Two-tier detection**:
+  - ✅ LanguageTool API (free, fast) checks first
+  - ✨ GPT AI fallback for missed errors (requires API key)
 - Smart debouncing (checks after you stop typing, not every keystroke)
-- Inline corrections with one-click fixes
+- One-click corrections with visual error chips
+- Color-coded: Red chips (LanguageTool), Blue chips (AI-detected)
 
 ### 2. Smart Summarizer
 - **Summarize long articles** in seconds
