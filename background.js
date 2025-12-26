@@ -35,12 +35,19 @@ chrome.storage.sync.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', '
   if (result.geminiKey) {
     CONFIG.gemini.apiKey = result.geminiKey;
   }
-  if (result.aiProvider) {
-    CONFIG.aiProvider = result.aiProvider;
-  }
+  // Default to gemini if not set
+  CONFIG.aiProvider = result.aiProvider || 'gemini';
+  
   if (result.languageToolEnabled !== undefined) {
     CONFIG.languageTool.enabled = result.languageToolEnabled;
   }
+  
+  console.log('Loaded config:', {
+    aiProvider: CONFIG.aiProvider,
+    hasGeminiKey: !!CONFIG.gemini.apiKey,
+    hasOpenAIKey: !!CONFIG.openai.apiKey,
+    premium: CONFIG.premium.isActive
+  });
 });
 
 /**
@@ -302,11 +309,13 @@ function parseAIResponse(content) {
 
 /**
  * Summarize Text Handler
- * Uses GPT-4 to create article summaries
+ * Uses AI (Gemini or OpenAI) to create article summaries
  */
 async function summarizeText(text, mode = 'quick') {
-  if (!CONFIG.openai.apiKey) {
-    return { error: 'OpenAI API key not configured. Add it in settings.' };
+  const hasApiKey = CONFIG.aiProvider === 'gemini' ? CONFIG.gemini.apiKey : CONFIG.openai.apiKey;
+  
+  if (!hasApiKey) {
+    return { error: `${CONFIG.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key not configured. Add it in settings.` };
   }
 
   const prompts = {
@@ -315,33 +324,14 @@ async function summarizeText(text, mode = 'quick') {
     eli5: `Explain this like I'm 5 years old:\n\n${text}`
   };
 
+  const promptText = prompts[mode] || prompts.quick;
+
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.openai.apiKey}`
-      },
-      body: JSON.stringify({
-        model: CONFIG.openai.model,
-        messages: [
-          { role: 'user', content: prompts[mode] || prompts.quick }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      })
-    });
-
-    const data = await response.json();
-    
-    if (data.error) {
-      return { error: data.error.message };
+    if (CONFIG.aiProvider === 'gemini') {
+      return await summarizeWithGemini(promptText);
+    } else {
+      return await summarizeWithOpenAI(promptText);
     }
-
-    return {
-      summary: data.choices[0].message.content,
-      tokens: data.usage.total_tokens
-    };
   } catch (error) {
     console.error('Summarization failed:', error);
     return { error: error.message };
@@ -349,12 +339,78 @@ async function summarizeText(text, mode = 'quick') {
 }
 
 /**
+ * Summarize with OpenAI
+ */
+async function summarizeWithOpenAI(promptText) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${CONFIG.openai.apiKey}`
+    },
+    body: JSON.stringify({
+      model: CONFIG.openai.model,
+      messages: [
+        { role: 'user', content: promptText }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+
+  const data = await response.json();
+  
+  if (data.error) {
+    return { error: data.error.message };
+  }
+
+  return {
+    summary: data.choices[0].message.content,
+    tokens: data.usage.total_tokens
+  };
+}
+
+/**
+ * Summarize with Gemini
+ */
+async function summarizeWithGemini(promptText) {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.gemini.model}:generateContent?key=${CONFIG.gemini.apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: promptText }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 500
+      }
+    })
+  });
+
+  const data = await response.json();
+  
+  if (data.error) {
+    return { error: data.error.message };
+  }
+
+  return {
+    summary: data.candidates[0].content.parts[0].text,
+    tokens: data.usageMetadata?.totalTokenCount || 0
+  };
+}
+
+/**
  * Policy Analysis Handler
  * Analyzes privacy policies for red flags
  */
 async function analyzePolicy(policyText) {
-  if (!CONFIG.openai.apiKey) {
-    return { error: 'OpenAI API key not configured' };
+  const hasApiKey = CONFIG.aiProvider === 'gemini' ? CONFIG.gemini.apiKey : CONFIG.openai.apiKey;
+  
+  if (!hasApiKey) {
+    return { error: `${CONFIG.aiProvider === 'gemini' ? 'Gemini' : 'OpenAI'} API key not configured` };
   }
 
   const prompt = `You are a privacy and legal analyst. Analyze this privacy policy and identify concerning clauses.
@@ -386,37 +442,87 @@ Policy to analyze:
 ${policyText.slice(0, 8000)}`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.openai.apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a legal analyst specializing in privacy policies. Always return valid JSON.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500
-      })
-    });
-
-    const data = await response.json();
-    
-    if (data.error) {
-      return { error: data.error.message };
+    if (CONFIG.aiProvider === 'gemini') {
+      return await analyzePolicyWithGemini(prompt);
+    } else {
+      return await analyzePolicyWithOpenAI(prompt);
     }
-
-    const analysis = JSON.parse(data.choices[0].message.content);
-    return analysis;
   } catch (error) {
     console.error('Policy analysis failed:', error);
     return { error: error.message };
+  }
+}
+
+/**
+ * Analyze policy with OpenAI
+ */
+async function analyzePolicyWithOpenAI(prompt) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${CONFIG.openai.apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are a legal analyst specializing in privacy policies. Always return valid JSON.' 
+        },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 1500
+    })
+  });
+
+  const data = await response.json();
+  
+  if (data.error) {
+    return { error: data.error.message };
+  }
+
+  const analysis = JSON.parse(data.choices[0].message.content);
+  return analysis;
+}
+
+/**
+ * Analyze policy with Gemini
+ */
+async function analyzePolicyWithGemini(prompt) {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.gemini.model}:generateContent?key=${CONFIG.gemini.apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `You are a legal analyst specializing in privacy policies. Always return valid JSON.\n\n${prompt}`
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1500
+      }
+    })
+  });
+
+  const data = await response.json();
+  
+  if (data.error) {
+    return { error: data.error.message };
+  }
+
+  const content = data.candidates[0].content.parts[0].text.trim();
+  
+  // Parse JSON from response
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  } else {
+    return JSON.parse(content);
   }
 }
 
