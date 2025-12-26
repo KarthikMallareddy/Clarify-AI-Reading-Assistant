@@ -132,6 +132,8 @@ async function checkWithLanguageTool(text) {
 
   const data = await response.json();
   
+  console.log(`LanguageTool found ${data.matches.length} errors in text: "${text.substring(0, 50)}..."`);
+  
   return data.matches.map(match => ({
     message: match.message,
     shortMessage: match.shortMessage || match.message,
