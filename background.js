@@ -9,10 +9,14 @@ const CONFIG = {
     url: 'https://api.languagetool.org/v2/check',
     enabled: true
   },
+  aiProvider: 'gemini', // 'openai' or 'gemini'
   openai: {
-    // Owner's API key - only used for premium users
-    apiKey: '', // TODO: Add your OpenAI key here
+    apiKey: '',
     model: 'gpt-4o-mini'
+  },
+  gemini: {
+    apiKey: '', // Get free key at https://aistudio.google.com/app/apikey
+    model: 'gemini-1.5-flash' // Fast and free
   },
   premium: {
     isActive: false,
@@ -21,9 +25,18 @@ const CONFIG = {
 };
 
 // Load settings from storage
-chrome.storage.sync.get(['licenseKey', 'languageToolEnabled'], (result) => {
+chrome.storage.sync.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', 'languageToolEnabled'], (result) => {
   if (result.licenseKey) {
     validateLicense(result.licenseKey);
+  }
+  if (result.openaiKey) {
+    CONFIG.openai.apiKey = result.openaiKey;
+  }
+  if (result.geminiKey) {
+    CONFIG.gemini.apiKey = result.geminiKey;
+  }
+  if (result.aiProvider) {
+    CONFIG.aiProvider = result.aiProvider;
   }
   if (result.languageToolEnabled !== undefined) {
     CONFIG.languageTool.enabled = result.languageToolEnabled;
@@ -85,8 +98,10 @@ async function checkGrammar(text) {
     
     // Step 3: AI fallback - PREMIUM ONLY
     // Only activate if user has premium license
-    if (CONFIG.premium.isActive && CONFIG.openai.apiKey && text.length > 10) {
-      console.log('LanguageTool found 0 errors, trying AI fallback (Premium)...');
+    const hasApiKey = CONFIG.aiProvider === 'gemini' ? CONFIG.gemini.apiKey : CONFIG.openai.apiKey;
+    
+    if (CONFIG.premium.isActive && hasApiKey && text.length > 10) {
+      console.log(`LanguageTool found 0 errors, trying AI fallback with ${CONFIG.aiProvider}...`);
       const aiErrors = await checkWithAI(text);
       if (aiErrors.length > 0) {
         console.log('AI found', aiErrors.length, 'additional errors');
@@ -148,9 +163,20 @@ async function checkWithLanguageTool(text) {
 }
 
 /**
- * Check grammar using OpenAI GPT (AI fallback)
+ * Check grammar using AI (OpenAI or Gemini)
  */
 async function checkWithAI(text) {
+  if (CONFIG.aiProvider === 'gemini') {
+    return await checkWithGemini(text);
+  } else {
+    return await checkWithOpenAI(text);
+  }
+}
+
+/**
+ * Check grammar using OpenAI GPT
+ */
+async function checkWithOpenAI(text) {
   if (!CONFIG.openai.apiKey) {
     return [];
   }
@@ -187,38 +213,92 @@ async function checkWithAI(text) {
     const data = await response.json();
     const content = data.choices[0].message.content.trim();
     
-    // Parse JSON response
-    let errors = [];
-    try {
-      // Remove markdown code blocks if present
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        errors = JSON.parse(jsonMatch[0]);
-      } else {
-        errors = JSON.parse(content);
-      }
-    } catch (e) {
-      console.error('Failed to parse AI response:', e);
+    return parseAIResponse(content);
+  } catch (error) {
+    console.error('OpenAI error:', error);
+    return [];
+  }
+}
+
+/**
+ * Check grammar using Google Gemini
+ */
+async function checkWithGemini(text) {
+  if (!CONFIG.gemini.apiKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.gemini.model}:generateContent?key=${CONFIG.gemini.apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `You are a grammar checker. Analyze the following text and return ONLY a JSON array of grammar errors. Each error must have: offset (character position from start), length (number of characters), message (explanation), replacements (array of correction suggestions). If no errors, return empty array [].\n\nText to check: "${text}"`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 500
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Gemini API error:', response.status, errorData);
       return [];
     }
+
+    const data = await response.json();
+    const content = data.candidates[0].content.parts[0].text.trim();
     
-    // Validate and format errors
-    return errors.filter(err => 
-      err.offset !== undefined && 
-      err.length !== undefined &&
-      err.message &&
-      err.replacements
-    ).map(err => ({
-      message: err.message,
-      shortMessage: err.message,
-      offset: err.offset,
-      length: err.length,
-      replacements: Array.isArray(err.replacements) ? err.replacements : [err.replacements],
-      rule: 'AI_GRAMMAR',
-      ruleDescription: 'AI-detected grammar issue',
-      type: 'AI_GRAMMAR',
-      category: 'Grammar (AI)'
-    }));
+    return parseAIResponse(content);
+  } catch (error) {
+    console.error('Gemini error:', error);
+    return [];
+  }
+}
+
+/**
+ * Parse AI response (works for both OpenAI and Gemini)
+ */
+function parseAIResponse(content) {
+  let errors = [];
+  try {
+    // Remove markdown code blocks if present
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      errors = JSON.parse(jsonMatch[0]);
+    } else {
+      errors = JSON.parse(content);
+    }
+  } catch (e) {
+    console.error('Failed to parse AI response:', e);
+    return [];
+  }
+  
+  // Validate and format errors
+  return errors.filter(err => 
+    err.offset !== undefined && 
+    err.length !== undefined &&
+    err.message &&
+    err.replacements
+  ).map(err => ({
+    message: err.message,
+    shortMessage: err.message,
+    offset: err.offset,
+    length: err.length,
+    replacements: Array.isArray(err.replacements) ? err.replacements : [err.replacements],
+    rule: 'AI_GRAMMAR',
+    ruleDescription: 'AI-detected grammar issue',
+    type: 'AI_GRAMMAR',
+    category: 'Grammar (AI)'
+  }));
+}
     
   } catch (error) {
     console.error('AI grammar check failed:', error);
@@ -367,6 +447,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'updateConfig') {
+    // Update AI Provider
+    if (request.config.aiProvider !== undefined) {
+      CONFIG.aiProvider = request.config.aiProvider;
+    }
+    
+    // Update Gemini API key
+    if (request.config.geminiKey !== undefined) {
+      CONFIG.gemini.apiKey = request.config.geminiKey;
+    }
+    
     // Update OpenAI API key
     if (request.config.openaiKey !== undefined) {
       CONFIG.openai.apiKey = request.config.openaiKey;

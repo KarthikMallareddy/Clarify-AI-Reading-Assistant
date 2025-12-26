@@ -6,7 +6,11 @@
 // DOM Elements
 const licenseKeyInput = document.getElementById('license-key');
 const licenseStatus = document.getElementById('premium-status');
+const aiProviderSelect = document.getElementById('ai-provider');
+const geminiKeyInput = document.getElementById('gemini-key');
 const openaiKeyInput = document.getElementById('openai-key');
+const geminiSection = document.getElementById('gemini-section');
+const openaiSection = document.getElementById('openai-section');
 const grammarToggle = document.getElementById('grammar-toggle');
 const articleToggle = document.getElementById('article-toggle');
 const policyToggle = document.getElementById('policy-toggle');
@@ -26,6 +30,8 @@ const policyStat = document.getElementById('policy-stat');
 function loadSettings() {
   chrome.storage.sync.get([
     'licenseKey',
+    'aiProvider',
+    'geminiKey',
     'openaiKey',
     'grammarEnabled',
     'articleDetection',
@@ -37,7 +43,15 @@ function loadSettings() {
       validateAndShowLicense(result.licenseKey);
     }
     
-    // API Key
+    // AI Provider
+    const provider = result.aiProvider || 'gemini';
+    aiProviderSelect.value = provider;
+    toggleProviderSections(provider);
+    
+    // API Keys
+    if (result.geminiKey) {
+      geminiKeyInput.value = result.geminiKey;
+    }
     if (result.openaiKey) {
       openaiKeyInput.value = result.openaiKey;
     }
@@ -78,6 +92,19 @@ function validateAndShowLicense(licenseKey) {
 }
 
 /**
+ * Toggle provider sections based on selection
+ */
+function toggleProviderSections(provider) {
+  if (provider === 'gemini') {
+    geminiSection.style.display = 'block';
+    openaiSection.style.display = 'none';
+  } else {
+    geminiSection.style.display = 'none';
+    openaiSection.style.display = 'block';
+  }
+}
+
+/**
  * Load usage statistics
  */
 function loadStats() {
@@ -93,9 +120,12 @@ function loadStats() {
  */
 function saveSettings() {
   const licenseKey = licenseKeyInput.value.trim();
+  const aiProvider = aiProviderSelect.value;
   
   const settings = {
     licenseKey: licenseKey,
+    aiProvider: aiProvider,
+    geminiKey: geminiKeyInput.value.trim(),
     openaiKey: openaiKeyInput.value.trim(),
     grammarEnabled: grammarToggle.classList.contains('active'),
     articleDetection: articleToggle.classList.contains('active'),
@@ -112,6 +142,8 @@ function saveSettings() {
       action: 'updateConfig',
       config: {
         licenseKey: licenseKey,
+        aiProvider: aiProvider,
+        geminiKey: settings.geminiKey,
         openaiKey: settings.openaiKey,
         languageToolEnabled: settings.grammarEnabled,
         isPremium: isPremium
@@ -130,6 +162,8 @@ function resetSettings() {
 
   const defaults = {
     licenseKey: '',
+    aiProvider: 'gemini',
+    geminiKey: '',
     openaiKey: '',
     grammarEnabled: true,
     articleDetection: true,
@@ -139,6 +173,9 @@ function resetSettings() {
   chrome.storage.sync.set(defaults, () => {
     licenseKeyInput.value = '';
     licenseStatus.style.display = 'none';
+    aiProviderSelect.value = 'gemini';
+    toggleProviderSections('gemini');
+    geminiKeyInput.value = '';
     openaiKeyInput.value = '';
     setToggleState(grammarToggle, true);
     setToggleState(articleToggle, true);
@@ -149,6 +186,8 @@ function resetSettings() {
       action: 'updateConfig',
       config: {
         licenseKey: '',
+        aiProvider: 'gemini',
+        geminiKey: '',
         openaiKey: '',
         languageToolEnabled: true,
         isPremium: false
@@ -203,6 +242,11 @@ function showAlert(message, type) {
  * Setup event listeners
  */
 function setupListeners() {
+  // AI Provider dropdown
+  aiProviderSelect.addEventListener('change', (e) => {
+    toggleProviderSections(e.target.value);
+  });
+  
   // Toggle clicks
   [grammarToggle, articleToggle, policyToggle].forEach(toggle => {
     toggle.addEventListener('click', () => {
