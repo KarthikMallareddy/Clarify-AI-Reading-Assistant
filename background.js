@@ -16,7 +16,7 @@ const CONFIG = {
   },
   gemini: {
     apiKey: '', // Get free key at https://aistudio.google.com/app/apikey
-    model: 'gemini-1.5-flash' // Fast and free
+    model: 'gemini-pro' // Fast and free
   },
   premium: {
     isActive: false,
