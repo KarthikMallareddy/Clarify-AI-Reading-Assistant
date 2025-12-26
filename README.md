@@ -8,16 +8,22 @@ Clarify is a Chrome extension that makes reading and writing online faster and s
 
 ## Features
 
-### 1. Grammar Guardian
+### 1. Grammar Guardian 🔥
 - **Hybrid grammar checking** - LanguageTool + AI fallback
 - Catches errors that traditional checkers miss (like "their" vs "they're")
 - Works on Gmail, Twitter, LinkedIn, Reddit, and any text input
 - **Two-tier detection**:
-  - ✅ LanguageTool API (free, fast) checks first
-  - ✨ GPT AI fallback for missed errors (requires API key)
+  - ✅ LanguageTool API (free, fast) checks first - **Free Tier**
+  - ✨ GPT AI fallback for missed errors - **Premium Only**
 - Smart debouncing (checks after you stop typing, not every keystroke)
 - One-click corrections with visual error chips
-- Color-coded: Red chips (LanguageTool), Blue chips (AI-detected)
+- Color-coded: Red chips (LanguageTool), Blue chips with ✨ (AI-detected)
+
+**Premium Features:**
+- AI-powered advanced grammar detection
+- Catches homophones (their/they're/there, your/you're)
+- Context-aware corrections
+- Blue error chips with sparkle badge ✨
 
 ### 2. Smart Summarizer
 - **Summarize long articles** in seconds
@@ -47,10 +53,26 @@ Clarify is a Chrome extension that makes reading and writing online faster and s
 
 ### Configuration
 
+#### Free Tier (No License Required)
 1. Click the Clarify icon → Settings
-2. Add your **OpenAI API key** (get one at [platform.openai.com](https://platform.openai.com/api-keys))
+2. No setup needed - LanguageTool works out of the box
 3. Toggle features on/off as needed
-4. Start using!
+
+#### Premium Tier ($4.99/month)
+1. Click the Clarify icon → Settings
+2. Enter your **Premium License Key** in the "Premium License" section
+3. Click "Save Settings"
+4. See "✨ Premium Active!" confirmation
+5. AI grammar checking is now enabled
+
+**To get a Premium License:**
+- Visit our website (coming soon)
+- Subscribe for $4.99/month
+- Receive your license key: `CLARIFY-PRO-XXXX-XXXX-XXXX`
+
+**Admin Configuration (Optional):**
+- Add OpenAI API key for AI features (owner provides this)
+- Users only need the license key to access premium features
 
 ---
 
@@ -86,11 +108,27 @@ Clarify is a Chrome extension that makes reading and writing online faster and s
 - **Options Page** for settings
 
 ### APIs Used
-- **LanguageTool** (grammar checking) - Free tier: 20 requests/day
-- **OpenAI GPT-4** (summarization & policy analysis) - Paid
+- **LanguageTool** (free tier grammar) - Free, 20 requests/day
+- **OpenAI GPT-4o-mini** (AI grammar fallback) - Premium only
+- **OpenAI GPT-4** (summarization & policy analysis) - Admin configures
 
-### Cost Estimates
-- Grammar checking: **Free** (LanguageTool free tier)
+### Pricing Model
+**Free Tier:**
+- LanguageTool grammar checking
+- Basic error detection
+- Click-to-correct
+- $0/month
+
+**Premium Tier ($4.99/month):**
+- Everything in Free
+- AI-powered grammar fallback
+- Advanced error detection
+- Homophone detection (their/they're/there)
+- Blue sparkle error chips ✨
+
+### Cost Estimates (for admins)
+- Grammar checking (LanguageTool): **Free**
+- AI grammar fallback: **~$0.0001** per check (GPT-4o-mini)
 - Article summary: **~$0.001** per article
 - Policy analysis: **~$0.05** per policy
 
