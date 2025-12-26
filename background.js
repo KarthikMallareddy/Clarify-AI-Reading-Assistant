@@ -87,19 +87,6 @@ function validateLicense(licenseKey) {
   return false;
 }
 
-// Load settings from storage
-chrome.storage.sync.get(['licenseKey', 'openaiKey', 'languageToolEnabled'], (result) => {
-  if (result.licenseKey) {
-    validateLicense(result.licenseKey);
-  }
-  if (result.openaiKey) {
-    CONFIG.openai.apiKey = result.openaiKey;
-  }
-  if (result.languageToolEnabled !== undefined) {
-    CONFIG.languageTool.enabled = result.languageToolEnabled;
-  }
-});
-
 /**
  * Grammar Check Handler
  * Hybrid approach: LanguageTool first, then AI fallback
