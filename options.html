@@ -240,12 +240,42 @@
     <div class="content">
       <div id="alert" class="alert"></div>
 
+      <!-- Premium License -->
+      <div class="section">
+        <div class="section-title">🌟 Premium License</div>
+        <div class="section-desc">
+          Upgrade to Premium to unlock AI-powered grammar checking that catches errors traditional checkers miss.
+        </div>
+        
+        <div class="setting-group">
+          <label for="license-key" style="display: block; margin-bottom: 8px; font-weight: 500;">
+            License Key
+          </label>
+          <input 
+            type="text" 
+            id="license-key" 
+            placeholder="CLARIFY-PRO-XXXX-XXXX-XXXX" 
+            autocomplete="off"
+          />
+          <div class="api-key-hint" id="license-status" style="background: #f0f0f0;">
+            <strong>Free Tier:</strong> Basic grammar checking with LanguageTool
+            <br>
+            <strong>Premium Tier ($4.99/month):</strong> AI-powered grammar + LanguageTool
+            <br><br>
+            <a href="https://your-website.com/premium" target="_blank" style="color: #667eea; font-weight: 600;">
+              🚀 Upgrade to Premium
+            </a>
+          </div>
+          <div id="premium-status" style="margin-top: 12px; padding: 12px; border-radius: 8px; display: none;">
+          </div>
+        </div>
+      </div>
+
       <!-- API Configuration -->
       <div class="section">
-        <div class="section-title">API Configuration</div>
+        <div class="section-title">API Configuration (Admin Only)</div>
         <div class="section-desc">
-          Clarify uses OpenAI's GPT for summarization and policy analysis. 
-          Add your API key to unlock these features.
+          <strong>Note:</strong> This is for the extension owner only. Premium users don't need to add their own API keys.
         </div>
         
         <div class="setting-group">

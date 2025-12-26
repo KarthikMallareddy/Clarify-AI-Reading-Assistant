@@ -8,6 +8,8 @@ const grammarCard = document.getElementById('grammar-card');
 const summarizeCard = document.getElementById('summarize-card');
 const policyCard = document.getElementById('policy-card');
 const settingsBtn = document.getElementById('settings-btn');
+const premiumBadge = document.getElementById('premium-badge');
+const freeBadge = document.getElementById('free-badge');
 
 // Status elements
 const grammarStatus = document.getElementById('grammar-status');
@@ -34,12 +36,32 @@ async function init() {
 
   // Load stats
   loadStats();
+  
+  // Check premium status
+  checkPremiumStatus();
 
   // Check what's available on this page
   checkPageCapabilities();
 
   // Setup event listeners
   setupListeners();
+}
+
+/**
+ * Check and display premium status
+ */
+function checkPremiumStatus() {
+  chrome.storage.sync.get(['licenseKey'], (result) => {
+    const isPremium = result.licenseKey && result.licenseKey.startsWith('CLARIFY-PRO-');
+    
+    if (isPremium) {
+      premiumBadge.style.display = 'block';
+      freeBadge.style.display = 'none';
+    } else {
+      premiumBadge.style.display = 'none';
+      freeBadge.style.display = 'block';
+    }
+  });
 }
 
 /**

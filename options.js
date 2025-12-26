@@ -4,6 +4,8 @@
  */
 
 // DOM Elements
+const licenseKeyInput = document.getElementById('license-key');
+const licenseStatus = document.getElementById('premium-status');
 const openaiKeyInput = document.getElementById('openai-key');
 const grammarToggle = document.getElementById('grammar-toggle');
 const articleToggle = document.getElementById('article-toggle');
@@ -23,11 +25,18 @@ const policyStat = document.getElementById('policy-stat');
  */
 function loadSettings() {
   chrome.storage.sync.get([
+    'licenseKey',
     'openaiKey',
     'grammarEnabled',
     'articleDetection',
     'policyWarnings'
   ], (result) => {
+    // License Key
+    if (result.licenseKey) {
+      licenseKeyInput.value = result.licenseKey;
+      validateAndShowLicense(result.licenseKey);
+    }
+    
     // API Key
     if (result.openaiKey) {
       openaiKeyInput.value = result.openaiKey;
@@ -41,6 +50,31 @@ function loadSettings() {
 
   // Load stats
   loadStats();
+}
+
+/**
+ * Validate and show license status
+ */
+function validateAndShowLicense(licenseKey) {
+  if (!licenseKey) {
+    licenseStatus.style.display = 'none';
+    return;
+  }
+  
+  const isValid = licenseKey.startsWith('CLARIFY-PRO-');
+  licenseStatus.style.display = 'block';
+  
+  if (isValid) {
+    licenseStatus.style.background = '#d4edda';
+    licenseStatus.style.color = '#155724';
+    licenseStatus.style.border = '1px solid #c3e6cb';
+    licenseStatus.innerHTML = '✅ <strong>Premium Active!</strong> AI grammar checking enabled.';
+  } else {
+    licenseStatus.style.background = '#f8d7da';
+    licenseStatus.style.color = '#721c24';
+    licenseStatus.style.border = '1px solid #f5c6cb';
+    licenseStatus.innerHTML = '❌ Invalid license key. Please check and try again.';
+  }
 }
 
 /**
@@ -58,7 +92,10 @@ function loadStats() {
  * Save settings
  */
 function saveSettings() {
+  const licenseKey = licenseKeyInput.value.trim();
+  
   const settings = {
+    licenseKey: licenseKey,
     openaiKey: openaiKeyInput.value.trim(),
     grammarEnabled: grammarToggle.classList.contains('active'),
     articleDetection: articleToggle.classList.contains('active'),
@@ -66,12 +103,18 @@ function saveSettings() {
   };
 
   chrome.storage.sync.set(settings, () => {
+    // Validate and show license status
+    validateAndShowLicense(licenseKey);
+    
     // Update background script config
+    const isPremium = licenseKey.startsWith('CLARIFY-PRO-');
     chrome.runtime.sendMessage({
       action: 'updateConfig',
       config: {
+        licenseKey: licenseKey,
         openaiKey: settings.openaiKey,
-        languageToolEnabled: settings.grammarEnabled
+        languageToolEnabled: settings.grammarEnabled,
+        isPremium: isPremium
       }
     });
 
@@ -86,6 +129,7 @@ function resetSettings() {
   if (!confirm('Reset all settings to defaults?')) return;
 
   const defaults = {
+    licenseKey: '',
     openaiKey: '',
     grammarEnabled: true,
     articleDetection: true,
@@ -93,10 +137,23 @@ function resetSettings() {
   };
 
   chrome.storage.sync.set(defaults, () => {
+    licenseKeyInput.value = '';
+    licenseStatus.style.display = 'none';
     openaiKeyInput.value = '';
     setToggleState(grammarToggle, true);
     setToggleState(articleToggle, true);
     setToggleState(policyToggle, true);
+
+    // Update background config
+    chrome.runtime.sendMessage({
+      action: 'updateConfig',
+      config: {
+        licenseKey: '',
+        openaiKey: '',
+        languageToolEnabled: true,
+        isPremium: false
+      }
+    });
 
     showAlert('Settings reset to defaults', 'success');
   });
