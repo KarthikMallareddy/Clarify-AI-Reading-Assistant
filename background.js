@@ -26,6 +26,16 @@ const CONFIG = {
 
 // Load settings from storage
 chrome.storage.sync.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', 'languageToolEnabled'], (result) => {
+  if (chrome.runtime.lastError) {
+    console.error('Error loading settings:', chrome.runtime.lastError);
+    return;
+  }
+  
+  if (!result) {
+    console.log('No settings found, using defaults');
+    return;
+  }
+  
   if (result.licenseKey) {
     validateLicense(result.licenseKey);
   }
