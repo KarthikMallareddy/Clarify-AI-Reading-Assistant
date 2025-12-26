@@ -71,10 +71,15 @@ class GrammarChecker {
   }
 
   attachToInput(elem) {
+    // Prevent duplicate attachment
+    if (elem.dataset.clarifyListenerAttached) return;
+    elem.dataset.clarifyListenerAttached = 'true';
+    
     // Add input listener with debouncing
     elem.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       
+      // Don't clear errors while typing - only when new check completes
       // Wait 500ms after user stops typing
       debounceTimer = setTimeout(() => {
         this.checkText(elem);
@@ -122,30 +127,56 @@ class GrammarChecker {
   }
 
   displayErrors(elem, errors) {
-    // Clear old markers
-    this.clearMarkers();
+    // Store current focus
+    const wasFocused = document.activeElement === elem;
+    const cursorPos = elem.selectionStart;
+    
+    // Only clear markers when updating with new results
+    // This keeps errors visible while user continues typing
+    this.clearMarkersForElement(elem);
 
-    if (errors.length === 0) return;
+    if (errors.length === 0) {
+      currentErrors = [];
+      return;
+    }
 
     console.log(`Found ${errors.length} grammar errors`);
 
-    // For simplicity, show errors as clickable chips below the input
+    // Show errors as clickable chips below the input
     this.createErrorChips(elem, errors);
 
     currentErrors = errors;
+    
+    // Restore focus if it was focused
+    if (wasFocused) {
+      elem.focus();
+      if (cursorPos !== undefined && elem.setSelectionRange) {
+        elem.setSelectionRange(cursorPos, cursorPos);
+      }
+    }
   }
 
   createErrorChips(elem, errors) {
-    // Create container for error chips
-    let container = elem.nextElementSibling;
-    if (!container || !container.classList.contains('clarify-errors-container')) {
+    // Find or create container that won't interfere with the input
+    let container = document.querySelector('.clarify-errors-container-' + this.getElementId(elem));
+    
+    if (!container) {
       container = document.createElement('div');
-      container.className = 'clarify-errors-container';
-      container.style.marginTop = '8px';
-      container.style.display = 'flex';
-      container.style.flexWrap = 'wrap';
-      container.style.gap = '8px';
-      elem.parentNode.insertBefore(container, elem.nextSibling);
+      container.className = 'clarify-errors-container clarify-errors-container-' + this.getElementId(elem);
+      container.style.cssText = `
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        pointer-events: auto;
+      `;
+      
+      // Insert after the element safely
+      if (elem.nextSibling) {
+        elem.parentNode.insertBefore(container, elem.nextSibling);
+      } else {
+        elem.parentNode.appendChild(container);
+      }
     }
 
     container.innerHTML = '';
@@ -155,11 +186,17 @@ class GrammarChecker {
     errors.forEach((error, index) => {
       const errorText = text.substring(error.offset, error.offset + error.length);
       
+      // Log error details for debugging
+      console.log(`Error ${index + 1}: "${errorText}" - ${error.category || error.type} - ${error.message}`);
+      
+      // Determine if this is an AI-detected error
+      const isAI = error.category && error.category.includes('AI');
+      
       const chip = document.createElement('div');
       chip.className = 'clarify-error-chip';
       chip.style.cssText = `
-        background: #ffebee;
-        border: 1px solid #ef5350;
+        background: ${isAI ? '#e3f2fd' : '#ffebee'};
+        border: 1px solid ${isAI ? '#2196F3' : '#ef5350'};
         border-radius: 16px;
         padding: 6px 12px;
         font-size: 13px;
@@ -168,25 +205,28 @@ class GrammarChecker {
         align-items: center;
         gap: 6px;
         transition: all 0.2s;
+        user-select: none;
       `;
 
       chip.innerHTML = `
-        <span style="font-weight: 600; color: #c62828;">${this.escapeHtml(errorText)}</span>
+        <span style="font-weight: 600; color: ${isAI ? '#1565c0' : '#c62828'};">${this.escapeHtml(errorText)}</span>
         <span style="color: #666;">→</span>
         <span style="color: #1976d2; font-weight: 500;">${error.replacements[0] || 'Fix'}</span>
+        ${isAI ? '<span style="font-size: 10px; color: #1976d2; margin-left: 4px;">✨AI</span>' : ''}
       `;
 
       chip.addEventListener('mouseenter', () => {
-        chip.style.background = '#ffcdd2';
+        chip.style.background = isAI ? '#bbdefb' : '#ffcdd2';
         chip.style.transform = 'scale(1.02)';
       });
 
       chip.addEventListener('mouseleave', () => {
-        chip.style.background = '#ffebee';
+        chip.style.background = isAI ? '#e3f2fd' : '#ffebee';
         chip.style.transform = 'scale(1)';
       });
 
       chip.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         this.showTooltip(chip, error, elem);
       });
@@ -196,6 +236,14 @@ class GrammarChecker {
     });
 
     this.errorMarkers.push(container);
+  }
+
+  getElementId(elem) {
+    // Create a unique ID for the element
+    if (!elem.dataset.clarifyId) {
+      elem.dataset.clarifyId = 'elem-' + Math.random().toString(36).substr(2, 9);
+    }
+    return elem.dataset.clarifyId;
   }
 
   escapeHtml(text) {
@@ -255,28 +303,56 @@ class GrammarChecker {
   }
 
   applyCorrection(elem, offset, length, replacement) {
+    // Store cursor position
+    const cursorPos = elem.selectionStart;
+    
     const text = elem.value || elem.innerText || elem.textContent;
     const newText = text.substring(0, offset) + replacement + text.substring(offset + length);
 
     if (elem.value !== undefined) {
       elem.value = newText;
+      // Set cursor after the replacement
+      const newCursorPos = offset + replacement.length;
+      elem.focus();
+      elem.setSelectionRange(newCursorPos, newCursorPos);
     } else {
       elem.textContent = newText;
     }
 
-    // Trigger re-check
-    this.clearMarkers();
+    // Clear markers and re-check after a delay
+    this.clearMarkersOnly();
     setTimeout(() => {
       this.checkText(elem);
     }, 100);
   }
 
-  clearMarkers() {
-    this.errorMarkers.forEach(marker => marker.remove());
+  clearMarkersOnly() {
+    // Only clear the chip elements, not containers
+    this.errorMarkers.forEach(marker => {
+      if (marker && marker.remove) {
+        marker.remove();
+      }
+    });
     this.errorMarkers = [];
+  }
+
+  clearMarkersForElement(elem) {
+    // Clear only markers for this specific element
+    const elementId = this.getElementId(elem);
+    const container = document.querySelector('.clarify-errors-container-' + elementId);
+    if (container) {
+      container.innerHTML = ''; // Clear chips but keep container
+    }
+  }
+
+  clearMarkers() {
+    this.clearMarkersOnly();
     
     // Remove any tooltips
     document.querySelectorAll('.clarify-tooltip').forEach(t => t.remove());
+    
+    // Remove all error containers
+    document.querySelectorAll('.clarify-errors-container').forEach(c => c.remove());
   }
 }
 
