@@ -10,14 +10,52 @@ const CONFIG = {
     enabled: true
   },
   openai: {
-    // User will add their API key in settings
-    apiKey: '',
+    // Owner's API key - only used for premium users
+    apiKey: '', // TODO: Add your OpenAI key here
     model: 'gpt-4o-mini'
+  },
+  premium: {
+    isActive: false,
+    licenseKey: null
   }
 };
 
 // Load settings from storage
-chrome.storage.sync.get(['openaiKey', 'languageToolEnabled'], (result) => {
+chrome.storage.sync.get(['licenseKey', 'languageToolEnabled'], (result) => {
+  if (result.licenseKey) {
+    validateLicense(result.licenseKey);
+  }
+  if (result.languageToolEnabled !== undefined) {
+    CONFIG.languageTool.enabled = result.languageToolEnabled;
+  }
+});
+
+/**
+ * Validate License Key
+ * Checks if user has premium access
+ */
+function validateLicense(licenseKey) {
+  // Simple validation - you can make this more secure later
+  // For now, we'll check against a pattern or validate with your server
+  
+  // Example: Premium keys start with "CLARIFY-PRO-"
+  if (licenseKey && licenseKey.startsWith('CLARIFY-PRO-')) {
+    CONFIG.premium.isActive = true;
+    CONFIG.premium.licenseKey = licenseKey;
+    console.log('Premium license activated');
+    return true;
+  }
+  
+  CONFIG.premium.isActive = false;
+  console.log('Free tier - AI features disabled');
+  return false;
+}
+
+// Load settings from storage
+chrome.storage.sync.get(['licenseKey', 'openaiKey', 'languageToolEnabled'], (result) => {
+  if (result.licenseKey) {
+    validateLicense(result.licenseKey);
+  }
   if (result.openaiKey) {
     CONFIG.openai.apiKey = result.openaiKey;
   }
@@ -45,14 +83,17 @@ async function checkGrammar(text) {
       return { errors: ltErrors, source: 'LanguageTool' };
     }
     
-    // Step 3: If no errors found and user has OpenAI key, use AI as fallback
-    if (CONFIG.openai.apiKey && text.length > 10) {
-      console.log('LanguageTool found 0 errors, trying AI fallback...');
+    // Step 3: AI fallback - PREMIUM ONLY
+    // Only activate if user has premium license
+    if (CONFIG.premium.isActive && CONFIG.openai.apiKey && text.length > 10) {
+      console.log('LanguageTool found 0 errors, trying AI fallback (Premium)...');
       const aiErrors = await checkWithAI(text);
       if (aiErrors.length > 0) {
         console.log('AI found', aiErrors.length, 'additional errors');
         return { errors: aiErrors, source: 'AI' };
       }
+    } else if (!CONFIG.premium.isActive && text.length > 10) {
+      console.log('AI fallback available in Premium version');
     }
     
     // No errors found by either method
@@ -324,8 +365,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   
   if (request.action === 'updateConfig') {
-    CONFIG.openai.apiKey = request.config.openaiKey || CONFIG.openai.apiKey;
-    CONFIG.languageTool.enabled = request.config.languageToolEnabled ?? CONFIG.languageTool.enabled;
+    // Update OpenAI API key
+    if (request.config.openaiKey !== undefined) {
+      CONFIG.openai.apiKey = request.config.openaiKey;
+    }
+    
+    // Update LanguageTool enabled state
+    if (request.config.languageToolEnabled !== undefined) {
+      CONFIG.languageTool.enabled = request.config.languageToolEnabled;
+    }
+    
+    // Update premium status
+    if (request.config.licenseKey !== undefined) {
+      validateLicense(request.config.licenseKey);
+    }
+    
     sendResponse({ success: true });
   }
 });
