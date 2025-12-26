@@ -45,7 +45,7 @@ function loadSettings() {
     // Toggles
     setToggleState(grammarToggle, result.grammarEnabled !== false);
     setToggleState(articleToggle, result.articleDetection !== false);
-    setToggleState(policyWarnings, result.policyWarnings !== false);
+    setToggleState(policyToggle, result.policyWarnings !== false);
   });
 
   // Load stats
