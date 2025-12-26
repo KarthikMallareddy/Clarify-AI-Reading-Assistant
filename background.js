@@ -27,15 +27,21 @@ const CONFIG = {
 // Load settings from storage
 chrome.storage.sync.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', 'languageToolEnabled'], (result) => {
   if (chrome.runtime.lastError) {
-    console.error('Error loading settings:', chrome.runtime.lastError);
+    console.warn('Storage sync error (will retry with local):', chrome.runtime.lastError.message);
+    // Fallback to local storage if sync fails
+    chrome.storage.local.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', 'languageToolEnabled'], (localResult) => {
+      loadConfigFromResult(localResult || {});
+    });
     return;
   }
   
-  if (!result) {
-    console.log('No settings found, using defaults');
-    return;
-  }
-  
+  loadConfigFromResult(result || {});
+});
+
+/**
+ * Load configuration from storage result
+ */
+function loadConfigFromResult(result) {
   if (result.licenseKey) {
     validateLicense(result.licenseKey);
   }
@@ -58,7 +64,7 @@ chrome.storage.sync.get(['licenseKey', 'openaiKey', 'geminiKey', 'aiProvider', '
     hasOpenAIKey: !!CONFIG.openai.apiKey,
     premium: CONFIG.premium.isActive
   });
-});
+}
 
 /**
  * Validate License Key
