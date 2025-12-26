@@ -299,12 +299,6 @@ function parseAIResponse(content) {
     category: 'Grammar (AI)'
   }));
 }
-    
-  } catch (error) {
-    console.error('AI grammar check failed:', error);
-    return [];
-  }
-}
 
 /**
  * Summarize Text Handler
