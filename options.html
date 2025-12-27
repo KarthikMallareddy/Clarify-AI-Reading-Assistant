@@ -278,7 +278,40 @@
           <strong>Note:</strong> This is for the extension owner only. Premium users don't need to add their own API keys.
         </div>
         
+        <!-- AI Provider Selection -->
         <div class="setting-group">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+            AI Provider
+          </label>
+          <select id="ai-provider" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
+            <option value="gemini">Google Gemini (Free Tier Available)</option>
+            <option value="openai">OpenAI GPT (Requires Billing)</option>
+          </select>
+          <div class="api-key-hint" style="margin-top: 8px;">
+            <strong>Gemini:</strong> Free tier available, easy setup<br>
+            <strong>OpenAI:</strong> Requires billing, more expensive
+          </div>
+        </div>
+        
+        <!-- Gemini API Key -->
+        <div class="setting-group" id="gemini-section">
+          <label for="gemini-key" style="display: block; margin-bottom: 8px; font-weight: 500;">
+            Google Gemini API Key
+          </label>
+          <input 
+            type="password" 
+            id="gemini-key" 
+            placeholder="AIza..." 
+            autocomplete="off"
+          />
+          <div class="api-key-hint">
+            Get your FREE API key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>
+            <br><strong>Free Tier:</strong> 15 requests/minute, 1500 requests/day
+          </div>
+        </div>
+        
+        <!-- OpenAI API Key -->
+        <div class="setting-group" id="openai-section" style="display: none;">
           <label for="openai-key" style="display: block; margin-bottom: 8px; font-weight: 500;">
             OpenAI API Key
           </label>
